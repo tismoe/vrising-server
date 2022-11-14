@@ -16,4 +16,4 @@ mcrcon \
   -H "127.0.0.1" \
   -P "${V_RISING_SERVER_RCON_PORT}" \
   -p "${V_RISING_SERVER_RCON_PASSWORD}" \
-  $@
+  "$@"
