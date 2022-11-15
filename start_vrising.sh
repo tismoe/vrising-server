@@ -101,8 +101,7 @@ prepare_server_configuration_file() {
     | json_replace_bool ListOnMasterServer V_RISING_SERVER_LIST_ON_MNASTER_SERVER \
     | json_replace_number AutoSaveCount V_RISING_SERVER_AUTO_SAVE_COUNT \
     | json_replace_number AutoSaveInterval V_RISING_SERVER_AUTO_SAVE_INTERVAL \
-    | json_replace GameSettingsPreset V_RISING_SERVER_SAVE_NAME \
-    | json_replace SaveName V_RISING_SERVER_GAME_SETTINGS_PRESET
+    | json_replace GameSettingsPreset V_RISING_SERVER_GAME_SETTINGS_PRESET
   then
       errcho "Could not prepare ${V_RISING_CUSTOM_HOST_SETTINGS_FILE} with values from environment."
       rm -f "${V_RISING_CUSTOM_HOST_SETTINGS_FILE}"
