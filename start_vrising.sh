@@ -82,6 +82,34 @@ json_replace_bool() {
   fi
 }
 
+# Configure rcon and apply the server settings
+prepare_server_configuration_file() {
+  echo "Preparing custom server configuration file.."
+
+  if ! \
+      json_replace_bool Rcon.Enabled V_RISING_SERVER_RCON_ENABLED \
+    | json_replace Rcon.Password V_RISING_SERVER_RCON_PASSWORD \
+    | json_replace_number Rcon.Port V_RISING_SERVER_RCON_PORT \
+    | json_replace Name V_RISING_SERVER_NAME \
+    | json_replace Description V_RISING_SERVER_DESCRIPTION \
+    | json_replace_number Port V_RISING_SERVER_GAME_PORT \
+    | json_replace_number QueryPort V_RISING_SERVER_QUERY_PORT \
+    | json_replace_number MaxConnectedUsers V_RISING_SERVER_MAX_CONNECTED_USERS \
+    | json_replace_number MaxConnectedAdmins V_RISING_SERVER_MAX_CONNECTED_ADMINS \
+    | json_replace SaveName V_RISING_SERVER_SAVE_NAME \
+    | json_replace Password V_RISING_SERVER_PASSWORD \
+    | json_replace_bool ListOnMasterServer V_RISING_SERVER_LIST_ON_MNASTER_SERVER \
+    | json_replace_number AutoSaveCount V_RISING_SERVER_AUTO_SAVE_COUNT \
+    | json_replace_number AutoSaveInterval V_RISING_SERVER_AUTO_SAVE_INTERVAL \
+    | json_replace GameSettingsPreset V_RISING_SERVER_SAVE_NAME \
+    | json_replace SaveName V_RISING_SERVER_GAME_SETTINGS_PRESET
+  then
+      errcho "Could not prepare ${V_RISING_CUSTOM_HOST_SETTINGS_FILE} with values from environment."
+      rm -f "${V_RISING_CUSTOM_HOST_SETTINGS_FILE}"
+      exit 1
+  fi
+}
+
 # V Rising includes a 64-bit version of steamclient.so, so we need to tell the OS where it exists
 export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/steamcmd/vrising/VRisingServer_Data/Plugins/x86_64
 
@@ -168,13 +196,15 @@ fi
 ##       see if they exist or not, copy defaults or apply custom ones,
 ##       instead of processing them manually like this!
 
-# Copy the default server configuration file if one doesn't yet exist
+# Copy the default server configuration file if one doesn't yet exist and adapt changes from environment
 if [ ! -f "${V_RISING_CUSTOM_HOST_SETTINGS_FILE}" ]; then
-	echo "Server configuration file not found, creating a new one.."
-	cp ${V_RISING_DEFAULT_HOST_SETTINGS_FILE} ${V_RISING_CUSTOM_HOST_SETTINGS_FILE}
-# else
-#   echo "Applying custom server configuration file.."
-#   cp -f ${V_RISING_CUSTOM_HOST_SETTINGS_FILE} ${V_RISING_DEFAULT_HOST_SETTINGS_FILE}
+	echo "Server configuration file not found, creating a new one and incorporating changes from environment.."
+	if ! < "${V_RISING_DEFAULT_HOST_SETTINGS_FILE}" prepare_server_configuration_file > "${V_RISING_CUSTOM_HOST_SETTINGS_FILE}" ; then
+	  errcho Could not create custom configuration.
+	  exit 1
+  fi
+else
+  echo "Server configuration present, nothing to do.."
 fi
 
 # Copy the default game configuration file if one doesn't yet exist
@@ -203,36 +233,6 @@ else
   echo "Applying custom ban list file.."
   cp -f ${V_RISING_CUSTOM_BAN_LIST_FILE} ${V_RISING_DEFAULT_BAN_LIST_FILE}
 fi
-
-## FIXME: We should likely ONLY apply these when we first copy the the defaults,
-##        so that users are given the option of manually being able to persist edits to the files?
-# Configure rcon and apply the server settings
-if ! cat "${V_RISING_SERVER_CONFIG_FILE}" \
-  | json_replace_bool Rcon.Enabled V_RISING_SERVER_RCON_ENABLED \
-  | json_replace Rcon.Password V_RISING_SERVER_RCON_PASSWORD \
-  | json_replace_number Rcon.Port V_RISING_SERVER_RCON_PORT \
-  | json_replace Name V_RISING_SERVER_NAME \
-  | json_replace Description V_RISING_SERVER_DESCRIPTION \
-  | json_replace_number Port V_RISING_SERVER_GAME_PORT \
-  | json_replace_number QueryPort V_RISING_SERVER_QUERY_PORT \
-  | json_replace_number MaxConnectedUsers V_RISING_SERVER_MAX_CONNECTED_USERS \
-  | json_replace_number MaxConnectedAdmins V_RISING_SERVER_MAX_CONNECTED_ADMINS \
-  | json_replace SaveName V_RISING_SERVER_SAVE_NAME \
-  | json_replace Password V_RISING_SERVER_PASSWORD \
-  | json_replace_bool ListOnMasterServer V_RISING_SERVER_LIST_ON_MNASTER_SERVER \
-  | json_replace_number AutoSaveCount V_RISING_SERVER_AUTO_SAVE_COUNT \
-  | json_replace_number AutoSaveInterval V_RISING_SERVER_AUTO_SAVE_INTERVAL \
-  | json_replace GameSettingsPreset V_RISING_SERVER_SAVE_NAME \
-  | json_replace SaveName V_RISING_SERVER_GAME_SETTINGS_PRESET \
-  > "/tmp/ServerHostSettings.json.tmp" \
-  && cp -f "/tmp/ServerHostSettings.json.tmp" "${V_RISING_SERVER_CONFIG_FILE}" \
-  && rm -f "/tmp/ServerHostSettings.json.tmp" ; then
-    errcho "Could not prepare ${V_RISING_SERVER_CONFIG_FILE} with values from environment."
-    exit 1
-fi
-
-echo "Applying custom server configuration file.."
-cp -f ${V_RISING_SERVER_CONFIG_FILE} ${V_RISING_SERVER_CONFIG_FILE_DEFAULT}
 
 echo "Applying custom game configuration file.."
 cp -f ${V_RISING_CUSTOM_GAME_SETTINGS_FILE} ${V_RISING_DEFAULT_GAME_SETTINGS_FILE}
