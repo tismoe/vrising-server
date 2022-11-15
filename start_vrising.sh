@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
 
 # Enable error handling
-# set -e
-# set -o pipefail
+set -e
+set -o pipefail
 
 # Enable debugging
 # set -x
@@ -29,6 +29,45 @@ exit_handler()
 
 # Trap specific signals and forward to the exit handler
 trap 'exit_handler' SIGINT SIGTERM
+
+errcho() {
+  local TEXT="${1:-An error occured.}"
+
+  >&2 echo "ERROR: ${TEXT}"
+}
+
+json_replace() {
+  if [ -z "${!2}" ] ; then
+    cat
+  else
+    if ! 2>/dev/null jq ".${1} |= env.${2}" ; then
+      errcho "Failed replacing JSON property \"${1}\" with value \$${2}=\"${!2}\""
+      exit 1
+    fi
+  fi
+}
+
+json_replace_number() {
+  if [ -z "${!2}" ] ; then
+    cat
+  else
+    if ! 2>/dev/null jq ".${1} |= (env.${2} | tonumber)" ; then
+      errcho "Failed replacing JSON property \"${1}\" with value \$${2}=\"${!2}\" as a number"
+      exit 1
+    fi
+  fi
+}
+
+json_replace_bool() {
+  if [ -z "${!2}" ] ; then
+    cat
+  else
+    if ! 2>/dev/null jq ".${1} |= (env.${2} | test(\"true\"))" ; then
+      errcho "Failed replacing JSON property \"${1}\" with value \$${2}=\"${!2}\" as a boolean"
+      exit 1
+    fi
+  fi
+}
 
 # V Rising includes a 64-bit version of steamclient.so, so we need to tell the OS where it exists
 export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/steamcmd/vrising/VRisingServer_Data/Plugins/x86_64
@@ -162,28 +201,32 @@ else
   cp -f ${V_RISING_SERVER_BAN_LIST_FILE} ${V_RISING_SERVER_BAN_LIST_FILE_DEFAULT}
 fi
 
-## TODO: This is a bit dumb at the moment, as it's always replacing the file,
-##       even though it doesn't strictly need to, but same goes for the files above..
-# Setup and/or configure RCON
-cat "${V_RISING_SERVER_CONFIG_FILE}" | jq '.Rcon = { "Enabled": env.V_RISING_SERVER_RCON_ENABLED|test("true"), "Password": env.V_RISING_SERVER_RCON_PASSWORD, "Port": env.V_RISING_SERVER_RCON_PORT|tonumber }' > "/tmp/ServerHostSettings.json.tmp"
-cp -f "/tmp/ServerHostSettings.json.tmp" "${V_RISING_SERVER_CONFIG_FILE}"
-
 ## FIXME: We should likely ONLY apply these when we first copy the the defaults,
 ##        so that users are given the option of manually being able to persist edits to the files?
-## TODO: This should be refactored to use functions, to cut down on boilerplate etc.
-# Apply the server settings
-jq '.Name |= env.V_RISING_SERVER_NAME' "${V_RISING_SERVER_CONFIG_FILE}" > "/tmp/ServerHostSettings.json.tmp" && cp -f "/tmp/ServerHostSettings.json.tmp" "${V_RISING_SERVER_CONFIG_FILE}"
-jq '.Description |= env.V_RISING_SERVER_DESCRIPTION' "${V_RISING_SERVER_CONFIG_FILE}" > "/tmp/ServerHostSettings.json.tmp" && cp -f "/tmp/ServerHostSettings.json.tmp" "${V_RISING_SERVER_CONFIG_FILE}"
-jq '.Port |= env.V_RISING_SERVER_GAME_PORT|tonumber' "${V_RISING_SERVER_CONFIG_FILE}" > "/tmp/ServerHostSettings.json.tmp" && cp -f "/tmp/ServerHostSettings.json.tmp" "${V_RISING_SERVER_CONFIG_FILE}"
-jq '.QueryPort |= env.V_RISING_SERVER_QUERY_PORT|tonumber' "${V_RISING_SERVER_CONFIG_FILE}" > "/tmp/ServerHostSettings.json.tmp" && cp -f "/tmp/ServerHostSettings.json.tmp" "${V_RISING_SERVER_CONFIG_FILE}"
-jq '.MaxConnectedUsers |= env.V_RISING_SERVER_MAX_CONNECTED_USERS|tonumber' "${V_RISING_SERVER_CONFIG_FILE}" > "/tmp/ServerHostSettings.json.tmp" && cp -f "/tmp/ServerHostSettings.json.tmp" "${V_RISING_SERVER_CONFIG_FILE}"
-jq '.MaxConnectedAdmins |= env.V_RISING_SERVER_MAX_CONNECTED_ADMINS|tonumber' "${V_RISING_SERVER_CONFIG_FILE}" > "/tmp/ServerHostSettings.json.tmp" && cp -f "/tmp/ServerHostSettings.json.tmp" "${V_RISING_SERVER_CONFIG_FILE}"
-jq '.SaveName |= env.V_RISING_SERVER_SAVE_NAME' "${V_RISING_SERVER_CONFIG_FILE}" > "/tmp/ServerHostSettings.json.tmp" && cp -f "/tmp/ServerHostSettings.json.tmp" "${V_RISING_SERVER_CONFIG_FILE}"
-jq '.Password |= env.V_RISING_SERVER_PASSWORD' "${V_RISING_SERVER_CONFIG_FILE}" > "/tmp/ServerHostSettings.json.tmp" && cp -f "/tmp/ServerHostSettings.json.tmp" "${V_RISING_SERVER_CONFIG_FILE}"
-jq '.ListOnMasterServer |= env.V_RISING_SERVER_LIST_ON_MNASTER_SERVER|test("true")' "${V_RISING_SERVER_CONFIG_FILE}" > "/tmp/ServerHostSettings.json.tmp" && cp -f "/tmp/ServerHostSettings.json.tmp" "${V_RISING_SERVER_CONFIG_FILE}"
-jq '.AutoSaveCount |= env.V_RISING_SERVER_AUTO_SAVE_COUNT|tonumber' "${V_RISING_SERVER_CONFIG_FILE}" > "/tmp/ServerHostSettings.json.tmp" && cp -f "/tmp/ServerHostSettings.json.tmp" "${V_RISING_SERVER_CONFIG_FILE}"
-jq '.AutoSaveInterval |= env.V_RISING_SERVER_AUTO_SAVE_INTERVAL|tonumber' "${V_RISING_SERVER_CONFIG_FILE}" > "/tmp/ServerHostSettings.json.tmp" && cp -f "/tmp/ServerHostSettings.json.tmp" "${V_RISING_SERVER_CONFIG_FILE}"
-jq '.GameSettingsPreset |= env.V_RISING_SERVER_GAME_SETTINGS_PRESET' "${V_RISING_SERVER_CONFIG_FILE}" > "/tmp/ServerHostSettings.json.tmp" && cp -f "/tmp/ServerHostSettings.json.tmp" "${V_RISING_SERVER_CONFIG_FILE}"
+# Configure rcon and apply the server settings
+if ! cat "${V_RISING_SERVER_CONFIG_FILE}" \
+  | json_replace_bool Rcon.Enabled V_RISING_SERVER_RCON_ENABLED \
+  | json_replace Rcon.Password V_RISING_SERVER_RCON_PASSWORD \
+  | json_replace_number Rcon.Port V_RISING_SERVER_RCON_PORT \
+  | json_replace Name V_RISING_SERVER_NAME \
+  | json_replace Description V_RISING_SERVER_DESCRIPTION \
+  | json_replace_number Port V_RISING_SERVER_GAME_PORT \
+  | json_replace_number QueryPort V_RISING_SERVER_QUERY_PORT \
+  | json_replace_number MaxConnectedUsers V_RISING_SERVER_MAX_CONNECTED_USERS \
+  | json_replace_number MaxConnectedAdmins V_RISING_SERVER_MAX_CONNECTED_ADMINS \
+  | json_replace SaveName V_RISING_SERVER_SAVE_NAME \
+  | json_replace Password V_RISING_SERVER_PASSWORD \
+  | json_replace_bool ListOnMasterServer V_RISING_SERVER_LIST_ON_MNASTER_SERVER \
+  | json_replace_number AutoSaveCount V_RISING_SERVER_AUTO_SAVE_COUNT \
+  | json_replace_number AutoSaveInterval V_RISING_SERVER_AUTO_SAVE_INTERVAL \
+  | json_replace GameSettingsPreset V_RISING_SERVER_SAVE_NAME \
+  | json_replace SaveName V_RISING_SERVER_GAME_SETTINGS_PRESET \
+  > "/tmp/ServerHostSettings.json.tmp" \
+  && cp -f "/tmp/ServerHostSettings.json.tmp" "${V_RISING_SERVER_CONFIG_FILE}" \
+  && rm -f "/tmp/ServerHostSettings.json.tmp" ; then
+    errcho "Could not prepare ${V_RISING_SERVER_CONFIG_FILE} with values from environment."
+    exit 1
+fi
 
 echo "Applying custom server configuration file.."
 cp -f ${V_RISING_SERVER_CONFIG_FILE} ${V_RISING_SERVER_CONFIG_FILE_DEFAULT}
