@@ -7,6 +7,19 @@ set -o pipefail
 # Enable debugging
 # set -x
 
+# Setup some constants
+V_RISING_DEFAULT_CONFIG_DIR="/steamcmd/vrising/VRisingServer_Data/StreamingAssets/Settings"
+
+V_RISING_DEFAULT_HOST_SETTINGS_FILE="${V_RISING_DEFAULT_CONFIG_DIR}/ServerHostSettings.json"
+V_RISING_DEFAULT_GAME_SETTINGS_FILE="${V_RISING_DEFAULT_CONFIG_DIR}/ServerGameSettings.json"
+V_RISING_DEFAULT_ADMIN_LIST_FILE="${V_RISING_DEFAULT_CONFIG_DIR}/adminlist.txt"
+V_RISING_DEFAULT_BAN_LIST_FILE="${V_RISING_DEFAULT_CONFIG_DIR}/banlist.txt"
+
+V_RISING_CUSTOM_HOST_SETTINGS_FILE="${V_RISING_SERVER_PERSISTENT_DATA_PATH}/ServerHostSettings.json"
+V_RISING_CUSTOM_GAME_SETTINGS_FILE="${V_RISING_SERVER_PERSISTENT_DATA_PATH}/ServerGameSettings.json"
+V_RISING_CUSTOM_ADMIN_LIST_FILE="${V_RISING_SERVER_PERSISTENT_DATA_PATH}/adminlist.txt"
+V_RISING_CUSTOM_BAN_LIST_FILE="${V_RISING_SERVER_PERSISTENT_DATA_PATH}/banlist.txt"
+
 # Print the user we're currently running as
 echo "Running as user: $(whoami)"
 
@@ -137,18 +150,14 @@ else
 	fi
 fi
 
-
-
 # Validate that the default server configuration file exists
-V_RISING_SERVER_CONFIG_FILE_DEFAULT="/steamcmd/vrising/VRisingServer_Data/StreamingAssets/Settings/ServerHostSettings.json"
-if [ ! -f "${V_RISING_SERVER_CONFIG_FILE_DEFAULT}" ]; then
+if [ ! -f "${V_RISING_DEFAULT_HOST_SETTINGS_FILE}" ]; then
 	echo "ERROR: Default server configuration file not found, are you sure the server is up to date?"
 	exit 1
 fi
 
 # Validate that the default game configuration file exists
-V_RISING_SERVER_GAME_CONFIG_FILE_DEFAULT="/steamcmd/vrising/VRisingServer_Data/StreamingAssets/Settings/ServerGameSettings.json"
-if [ ! -f "${V_RISING_SERVER_GAME_CONFIG_FILE_DEFAULT}" ]; then
+if [ ! -f "${V_RISING_DEFAULT_GAME_SETTINGS_FILE}" ]; then
 	echo "ERROR: Default game configuration file not found, are you sure the server is up to date?"
 	exit 1
 fi
@@ -160,45 +169,39 @@ fi
 ##       instead of processing them manually like this!
 
 # Copy the default server configuration file if one doesn't yet exist
-V_RISING_SERVER_CONFIG_FILE="${V_RISING_SERVER_PERSISTENT_DATA_PATH}/ServerHostSettings.json"
-if [ ! -f "${V_RISING_SERVER_CONFIG_FILE}" ]; then
+if [ ! -f "${V_RISING_CUSTOM_HOST_SETTINGS_FILE}" ]; then
 	echo "Server configuration file not found, creating a new one.."
-	cp ${V_RISING_SERVER_CONFIG_FILE_DEFAULT} ${V_RISING_SERVER_CONFIG_FILE}
+	cp ${V_RISING_DEFAULT_HOST_SETTINGS_FILE} ${V_RISING_CUSTOM_HOST_SETTINGS_FILE}
 # else
 #   echo "Applying custom server configuration file.."
-#   cp -f ${V_RISING_SERVER_CONFIG_FILE} ${V_RISING_SERVER_CONFIG_FILE_DEFAULT}
+#   cp -f ${V_RISING_CUSTOM_HOST_SETTINGS_FILE} ${V_RISING_DEFAULT_HOST_SETTINGS_FILE}
 fi
 
 # Copy the default game configuration file if one doesn't yet exist
-V_RISING_SERVER_GAME_CONFIG_FILE="${V_RISING_SERVER_PERSISTENT_DATA_PATH}/ServerGameSettings.json"
-if [ ! -f "${V_RISING_SERVER_GAME_CONFIG_FILE}" ]; then
+if [ ! -f "${V_RISING_CUSTOM_GAME_SETTINGS_FILE}" ]; then
 	echo "Game configuration file not found, creating a new one.."
-	cp ${V_RISING_SERVER_GAME_CONFIG_FILE_DEFAULT} ${V_RISING_SERVER_GAME_CONFIG_FILE}
+	cp ${V_RISING_DEFAULT_GAME_SETTINGS_FILE} ${V_RISING_CUSTOM_GAME_SETTINGS_FILE}
 # else
 #   echo "Applying custom game configuration file.."
-#   cp -f ${V_RISING_SERVER_GAME_CONFIG_FILE} ${V_RISING_SERVER_GAME_CONFIG_FILE_DEFAULT}
+#   cp -f ${V_RISING_CUSTOM_GAME_SETTINGS_FILE} ${V_RISING_DEFAULT_GAME_SETTINGS_FILE}
 fi
 
 # Copy admin list file if one doesn't yet exist
-V_RISING_SERVER_ADMIN_LIST_FILE_DEFAULT="/steamcmd/vrising/VRisingServer_Data/StreamingAssets/Settings/adminlist.txt"
-V_RISING_SERVER_ADMIN_LIST_FILE="${V_RISING_SERVER_PERSISTENT_DATA_PATH}/adminlist.txt"
-if [ ! -f "${V_RISING_SERVER_ADMIN_LIST_FILE}" ]; then
+if [ ! -f "${V_RISING_CUSTOM_ADMIN_LIST_FILE}" ]; then
 	echo "Admin list file not found, creating a new one.."
-	cp ${V_RISING_SERVER_ADMIN_LIST_FILE_DEFAULT} ${V_RISING_SERVER_ADMIN_LIST_FILE}
+	cp ${V_RISING_DEFAULT_ADMIN_LIST_FILE} ${V_RISING_CUSTOM_ADMIN_LIST_FILE}
 else
   echo "Applying custom admin list file.."
-  cp -f ${V_RISING_SERVER_ADMIN_LIST_FILE} ${V_RISING_SERVER_ADMIN_LIST_FILE_DEFAULT}
+  cp -f ${V_RISING_CUSTOM_ADMIN_LIST_FILE} ${V_RISING_DEFAULT_ADMIN_LIST_FILE}
 fi
 
 # Copy ban list file if one doesn't yet exist
-V_RISING_SERVER_BAN_LIST_FILE_DEFAULT="/steamcmd/vrising/VRisingServer_Data/StreamingAssets/Settings/banlist.txt"
-V_RISING_SERVER_BAN_LIST_FILE="${V_RISING_SERVER_PERSISTENT_DATA_PATH}/banlist.txt"
-if [ ! -f "${V_RISING_SERVER_BAN_LIST_FILE}" ]; then
+if [ ! -f "${V_RISING_CUSTOM_BAN_LIST_FILE}" ]; then
 	echo "Ban list file not found, creating a new one.."
-	cp ${V_RISING_SERVER_BAN_LIST_FILE_DEFAULT} ${V_RISING_SERVER_BAN_LIST_FILE}
+	cp ${V_RISING_DEFAULT_BAN_LIST_FILE} ${V_RISING_CUSTOM_BAN_LIST_FILE}
 else
   echo "Applying custom ban list file.."
-  cp -f ${V_RISING_SERVER_BAN_LIST_FILE} ${V_RISING_SERVER_BAN_LIST_FILE_DEFAULT}
+  cp -f ${V_RISING_CUSTOM_BAN_LIST_FILE} ${V_RISING_DEFAULT_BAN_LIST_FILE}
 fi
 
 ## FIXME: We should likely ONLY apply these when we first copy the the defaults,
@@ -232,7 +235,7 @@ echo "Applying custom server configuration file.."
 cp -f ${V_RISING_SERVER_CONFIG_FILE} ${V_RISING_SERVER_CONFIG_FILE_DEFAULT}
 
 echo "Applying custom game configuration file.."
-cp -f ${V_RISING_SERVER_GAME_CONFIG_FILE} ${V_RISING_SERVER_GAME_CONFIG_FILE_DEFAULT}
+cp -f ${V_RISING_CUSTOM_GAME_SETTINGS_FILE} ${V_RISING_DEFAULT_GAME_SETTINGS_FILE}
 
 # Start mode 1 means we only want to update
 if [ "$V_RISING_SERVER_START_MODE" = "1" ]; then
