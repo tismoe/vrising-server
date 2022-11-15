@@ -98,7 +98,7 @@ prepare_server_configuration_file() {
     | json_replace_number MaxConnectedAdmins V_RISING_SERVER_MAX_CONNECTED_ADMINS \
     | json_replace SaveName V_RISING_SERVER_SAVE_NAME \
     | json_replace Password V_RISING_SERVER_PASSWORD \
-    | json_replace_bool ListOnMasterServer V_RISING_SERVER_LIST_ON_MNASTER_SERVER \
+    | json_replace_bool ListOnMasterServer V_RISING_SERVER_LIST_ON_MASTER_SERVER \
     | json_replace_number AutoSaveCount V_RISING_SERVER_AUTO_SAVE_COUNT \
     | json_replace_number AutoSaveInterval V_RISING_SERVER_AUTO_SAVE_INTERVAL \
     | json_replace GameSettingsPreset V_RISING_SERVER_GAME_SETTINGS_PRESET
